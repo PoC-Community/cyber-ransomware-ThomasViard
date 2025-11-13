@@ -30,6 +30,11 @@ int main(int ac, char **av)
 {
     cryptalgo_t algo;
 
+    if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) == -1) {
+        printf(STDERR_FILENO, "Debugging detected. Exiting.\n");
+        return EXIT_FAILURE;
+    }
+
     if (!strcmp(av[1], "-h"))
         return help(EXIT_SUCCESS, STDOUT_FILENO);
     if (ac != 4)
