@@ -45,7 +45,7 @@ $(OBJECT_DIR)/%$(OBJPATTERN) : %$(PATTERN)
 	@echo "Compiling $@"
 
 $(NAME): $(OBJ)
-	@$(CC) -o $(NAME) $^ $(CFLAGS) $(INCLUDES) $(LINK_FLAG)
+	@$(CC) -o $(NAME) $^ $(CFLAGS) $(INCLUDES) $(LINK_FLAG) -s
 	@echo "[*** COMPILATION SUCCESSFUL ***]"
 
 clean:
