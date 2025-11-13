@@ -11,6 +11,7 @@
 bool init_encryption(FILE **to_encrypt, FILE **encrypted,
                      const char *filepath, const char *optfilepath)
 {
+    // step 2
     if (!(*to_encrypt = fopen(filepath, "rb")) || !(*encrypted = fopen(optfilepath, "wb")))
     {
         perror("fopen");
@@ -26,19 +27,15 @@ bool init_encryption(FILE **to_encrypt, FILE **encrypted,
 int write_header(unsigned char *generated_key, FILE **to_encrypt,
                  FILE **encrypted, crypto_secretstream_xchacha20poly1305_state *st)
 {
+    // step 2
     unsigned char header[crypto_secretstream_xchacha20poly1305_HEADERBYTES];
 
-    if (crypto_secretstream_xchacha20poly1305_init_push(
-            st, header, generated_key))
+    if (crypto_secretstream_xchacha20poly1305_init_push(st, header, generated_key) || fwrite(header, 1, sizeof(header), *encrypted) != sizeof(header))
     {
-        perror("Initialization of encryption failed.");
+        perror("Failed to write header");
         return graceful_exit(*to_encrypt, *encrypted, generated_key, EXIT_FAILURE);
     }
-    if (fwrite(header, 1, sizeof(header), *encrypted) != sizeof(header))
-    {
-        perror("Failed to write header.");
-        return graceful_exit(*to_encrypt, *encrypted, generated_key, EXIT_FAILURE);
-    }
+
     return EXIT_SUCCESS;
 }
 
@@ -51,6 +48,7 @@ int write_header(unsigned char *generated_key, FILE **to_encrypt,
 int encryption_loop(FILE *to_encrypt, FILE *encrypted,
                     crypto_secretstream_xchacha20poly1305_state st)
 {
+    // step 2
     unsigned char in[CHUNK_SIZE];
     unsigned char out[CHUNK_SIZE + crypto_secretstream_xchacha20poly1305_ABYTES];
     unsigned long long opt_len = 0;
@@ -63,13 +61,16 @@ int encryption_loop(FILE *to_encrypt, FILE *encrypted,
         read_len = fread(in, 1, sizeof(in), to_encrypt);
         eof = feof(to_encrypt);
         tag = eof ? crypto_secretstream_xchacha20poly1305_TAG_FINAL : 0;
+
         if (crypto_secretstream_xchacha20poly1305_push(&st, out, &opt_len, in,
                                                        read_len, NULL, 0, tag))
         {
-            perror("Encryption failed.");
+            perror("Corrupted chunk encountered.");
             return EXIT_FAILURE;
         }
-        fwrite(out, 1, (size_t)opt_len, encrypted);
+        else
+            fwrite(out, 1, (size_t)opt_len, encrypted);
+
     } while (!eof);
     return EXIT_SUCCESS;
 }
